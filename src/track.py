@@ -1,4 +1,6 @@
+from sys import prefix
 import numpy as np
+import re
 from xml.etree import ElementTree
 
 
@@ -16,4 +18,13 @@ class Track:
             setattr(self, key, value)
 
     def load_gpx(self, filepath: str):
-        data = ElementTree.parse(filepath)
+        with open(filepath, "r", encoding="utf-8") as f:
+            text = f.read()
+
+        # Removing namespaces
+        re.sub('xmlns="[^"]*"', '', text)       
+
+        root = ElementTree.fromstring(text)
+
+        if self.name is None:
+            self.name = root.find("metadata/name").text

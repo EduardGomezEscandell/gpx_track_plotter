@@ -1,4 +1,5 @@
 import unittest
+from test_utils import WorkFolderScope
 from src import track
 
 class TrackTests(unittest.TestCase):
@@ -8,9 +9,13 @@ class TrackTests(unittest.TestCase):
         self.assertEqual(t.name, "Test")
     
     def test_loading(self):
-        filename = "../data/2021-12-30_618996228_Creu d'Olorda.gpx"
         t = track.Track()
-        t.load_gpx(filename)
+
+        with WorkFolderScope("../data", __file__):
+            filename = "../data/2021-12-30_618996228_Creu d'Olorda.gpx"
+            t.load_gpx(filename)
+        
+        self.assertEqual(t.name, "Creu d'Olorda")
 
 
 
