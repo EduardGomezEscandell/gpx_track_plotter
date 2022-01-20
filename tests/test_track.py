@@ -16,7 +16,17 @@ class TrackTests(unittest.TestCase):
             t.load_gpx(filename)
         
         self.assertEqual(t.name, "Creu d'Olorda")
+        
+        # Time checks
+        self.assertEqual(len(t.time), 2722)
+        self.assertAlmostEqual(t.time[0], 0)
+        self.assertAlmostEqual(t.time[-1], 10503, delta=0.5)
 
+        # Location checks
+        self.assertEqual(len(t.time), 2722)
+        self.assertAlmostEqual(t.locations[0, 0], t.locations[-1, 0], delta=1)
+        self.assertAlmostEqual(t.locations[0, 1], t.locations[-1, 1], delta=1)
+        self.assertAlmostEqual(t.locations[0, 2], t.locations[-1, 2], delta=15)
 
 
 if __name__ == "__main__":
