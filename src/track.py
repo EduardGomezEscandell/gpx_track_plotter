@@ -1,12 +1,10 @@
-from math import sin, cos
-from turtle import shape
-from dateutil import parser
+import matplotlib.pyplot as plt
 import numpy as np
 import re
+
 from xml.etree import ElementTree
+from dateutil import parser
 
-
-_EARTH_RADIUS =  6.3781e6
 class _PointData:
     def __init__(self, xml_node) -> None:
         self.latitude = float(xml_node.attrib["lat"])
@@ -19,22 +17,17 @@ class _PointData:
     
     def __str__(self):
         return f"{self.time} @ [{self.latitude}, {self.longitude}, {self.elevation}]"
-    
-    def location(self):
-        return np.array([self.latitude, self.longitude, self.elevation])
-    
-    def vector_from(self, origin: np.array) -> np.array:
-        dx_hat = cos(self.latitude)*cos(self.longitude) - cos(origin.latitude)*cos(origin.longitude)
-        dy_hat = cos(self.latitude)*sin(self.longitude) - cos(origin.latitude)*sin(origin.longitude)
-        
-
-
 
 class Track:
+
+    __LAT = 0
+    __LON = 1
+    __ELE = 2
+
     def __init__(self, **kwargs: dict) -> None:
         self.name: str = None
         self.time_reference: float = None
-        self.location_reference: float = None
+        self.reference_basis: float = None
         
         self.locations: np.ndarray = None
         self.timestamps: np.ndarray = None
@@ -55,13 +48,13 @@ class Track:
             text = f.read()
 
         # Removing namespaces
-        re.sub('xmlns="[^"]*"', '', text)       
+        text = re.sub('xmlns="[^"]*"', '', text)
 
         root = ElementTree.fromstring(text)
 
         if self.name is None:
             self.name = root.find("metadata/name").text
-        
+
         point_data_list = []
 
         for point in root.find("trk/trkseg").findall("trkpt"):
@@ -76,14 +69,36 @@ class Track:
         if self.time_reference is None:
             self.time_reference = point_data_list[0].time
 
-        if self.location_reference is None:
-            self.location_reference = point_data_list[0].location()
-
         for i in range(n):
-            self.locations[i, 0] = point_data_list[i].longitude
-            self.locations[i, 1] = point_data_list[i].latitude
-            self.locations[i, 2] = point_data_list[i].elevation
-            self.locations[i,:] -= self.location_reference
+            self.locations[i, self.__LAT] = point_data_list[i].latitude
+            self.locations[i, self.__LON] = point_data_list[i].longitude
+            self.locations[i, self.__ELE] = point_data_list[i].elevation
 
             dt = point_data_list[i].time - self.time_reference
             self.time[i] = dt.total_seconds()
+
+    
+    def plot_track(self, fig: plt.figure, ax: plt.axes) -> None:
+        line = ax.plot(self.locations[:, self.__LON], self.locations[:, self.__LAT], label=self.name)
+
+        ax.set_xlabel('Longitude')
+        ax.set_ylabel('Latitude')
+
+        return line
+
+    def plot_track_until(self, fig: plt.figure, ax: plt.axes, until: float) -> None:
+        
+        
+        line = ax.plot(self.locations[:, self.__LON], self.locations[:, self.__LAT], label=self.name)
+
+        ax.set_xlabel('Longitude')
+        ax.set_ylabel('Latitude')
+
+        return line
+    
+    def plot_profile(self, ax: plt.axes) -> None:
+        p = ax.plot(self.time / 3600, self.locations[:,self.__ELE])
+        ax.set_xlabel('Time [hours]')
+        ax.set_ylabel('Elevation [m]')
+        ax.plot(0,0,'-')
+        return p
