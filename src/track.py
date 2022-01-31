@@ -20,9 +20,9 @@ class _PointData:
 
 class Track:
 
-    __LAT = 0
-    __LON = 1
-    __ELE = 2
+    LAT = 0
+    LON = 1
+    ELE = 2
 
     def __init__(self, **kwargs: dict) -> None:
         self.name: str = None
@@ -31,9 +31,6 @@ class Track:
         
         self.locations: np.ndarray = None
         self.timestamps: np.ndarray = None
-
-        self.x_range: list = None
-        self.y_range:list = None
         
         self._parse_kwargs(**kwargs)
        
@@ -64,22 +61,22 @@ class Track:
         n = len(point_data_list)
 
         self.locations = np.empty(shape=(n,3), dtype=np.float32)
-        self.time = np.empty(shape=(n,), dtype=np.float32)
+        self.timestamps = np.empty(shape=(n,), dtype=np.float32)
 
         if self.time_reference is None:
             self.time_reference = point_data_list[0].time
 
         for i in range(n):
-            self.locations[i, self.__LAT] = point_data_list[i].latitude
-            self.locations[i, self.__LON] = point_data_list[i].longitude
-            self.locations[i, self.__ELE] = point_data_list[i].elevation
+            self.locations[i, self.LAT] = point_data_list[i].latitude
+            self.locations[i, self.LON] = point_data_list[i].longitude
+            self.locations[i, self.ELE] = point_data_list[i].elevation
 
             dt = point_data_list[i].time - self.time_reference
-            self.time[i] = dt.total_seconds()
+            self.timestamps[i] = dt.total_seconds()
 
     
     def plot_track(self, fig: plt.figure, ax: plt.axes) -> None:
-        line = ax.plot(self.locations[:, self.__LON], self.locations[:, self.__LAT], label=self.name)
+        line = ax.plot(self.locations[:, self.LON], self.locations[:, self.LAT], label=self.name)
 
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')
@@ -87,9 +84,12 @@ class Track:
         return line
 
     def plot_track_until(self, fig: plt.figure, ax: plt.axes, until: float) -> None:
+        end = self.timestamps.searchsorted(until)
         
+        line = ax.plot(self.locations[:end, self.LON], self.locations[:end, self.LAT], label=self.name)
         
-        line = ax.plot(self.locations[:, self.__LON], self.locations[:, self.__LAT], label=self.name)
+        last_entry = max(0, end-1)
+        ax.plot(self.locations[last_entry, self.LON], self.locations[last_entry, self.LAT], 'o', color=line[-1].get_color(), label=None)
 
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')
@@ -97,7 +97,7 @@ class Track:
         return line
     
     def plot_profile(self, ax: plt.axes) -> None:
-        p = ax.plot(self.time / 3600, self.locations[:,self.__ELE])
+        p = ax.plot(self.timestamps / 3600, self.locations[:,self.ELE])
         ax.set_xlabel('Time [hours]')
         ax.set_ylabel('Elevation [m]')
         ax.plot(0,0,'-')
