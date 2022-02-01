@@ -11,9 +11,9 @@ from src.map import Map
 
 fig = plt.figure()
 ax = plt.gca()
-with open("data/map/vissir.json", "r", encoding="utf-8") as f:
+with open("data/map/mapdata.json", "r", encoding="utf-8") as f:
     params = json.loads(f.read())
 
-m = Map(params["vissir3_zoom"])
+m = Map(params["vissir3_barcelona"])
 m.plot_raw(ax)
 plt.show()

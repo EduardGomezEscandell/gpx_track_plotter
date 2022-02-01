@@ -23,6 +23,14 @@ class AnimationBuilder:
 
         self.tracklist = None
         self.track_plotters = None
+    
+    @classmethod
+    def set_results_dir(cls, new_val) -> None:
+        cls.results_dir = new_val
+    
+    @classmethod
+    def set_data_dir(cls, new_val) -> None:
+        cls.data_dir = new_val
 
     @classmethod
     def _ReadTrack(cls, filename) -> Track:
@@ -60,7 +68,7 @@ class AnimationBuilder:
 
     def _GenerateSingleFrame(self, T: list, map_: Map, size: tuple, frame: int) -> plt.figure:
         fig = plt.figure(figsize=size, dpi=self.dpi)
-        ax = fig.axes[0]
+        ax = plt.gca()
 
         map_.plot(ax)
 
@@ -68,7 +76,7 @@ class AnimationBuilder:
         for i in range(ntracks):
             self.track_plotters[i].print_until_time(ax, T[frame])
         for i in range(ntracks):
-            self.track_plotters[i].location(ax, T[frame])
+            self.track_plotters[i].location(ax)
 
         ax.axis('off')
         fig.savefig(f'{self.results_dir}/frame{frame:0>5}.png', bbox_inches='tight')
@@ -76,7 +84,7 @@ class AnimationBuilder:
         print(f'Generated frame {frame}')
 
     def GenerateFrames(self):
-        filenames = [f for f in os.listdir("data") if ".gpx" in f]
+        filenames = [f for f in os.listdir(self.data_dir) if ".gpx" in f]
 
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(self._ReadTrack, filename) for filename in filenames]
@@ -105,7 +113,7 @@ class AnimationBuilder:
 
         firstframe = cv2.imread(f"{cls.results_dir}/{framenames[0]}")
         size = firstframe.shape[1], firstframe.shape[0]
-        out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        out = cv2.VideoWriter('result_sample.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(cv2.imread, f"{cls.results_dir}/{filename}") for filename in framenames]
