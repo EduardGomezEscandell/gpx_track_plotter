@@ -62,6 +62,8 @@ class AnimationBuilder:
         ntracks = len(self.track_plotters)
         for i in range(ntracks):
             self.track_plotters[i].next_frame(ax, T[frame])
+        for i in range(ntracks):
+            self.track_plotters[i].location(ax, T[frame])
 
         ax.axis('off')
         fig.savefig(f'{self.results_dir}/frame{frame:0>5}.png', bbox_inches='tight')
@@ -74,7 +76,7 @@ class AnimationBuilder:
         with ProcessPoolExecutor() as exec:
             futures = [exec.submit(self._ReadTrack, filename) for filename in filenames if ".gpx" in filename]
             self.tracklist = [future.result() for future in futures]
-            self.tracklist.sort(key=lambda trk: trk.time_reference)
+            self.tracklist.sort(key=lambda trk: trk.timestamps[-1])
 
         self._GenerateResultsDir()
         map_ = map.Map(self.map_settings)
@@ -85,11 +87,10 @@ class AnimationBuilder:
         max_t = max(self.tracklist, key= lambda trk: trk.timestamps[-1]).timestamps[-1]
         time_steps = np.linspace(0, max_t, self.num_frames)
 
-        colors = self.colourmap(np.linspace(0,1,12))
+        colours = self.colourmap(np.linspace(0,1, len(self.tracklist)))
         extrema = self._FindExtrema()
-        self.track_plotters = [trk.get_track_plotter(extrema, color=colors[trk.time_reference.month-1]) for trk in self.tracklist]
+        self.track_plotters = [trk.get_track_plotter(extrema, color=col) for trk, col in zip(self.tracklist, colours)]
 
-        #ax, T[frame], color=colors[month]
         [self._GenerateSingleFrame(time_steps, map_, size, frame) for frame in range(self.num_frames)]
 
     @classmethod
@@ -99,9 +100,9 @@ class AnimationBuilder:
 
         firstframe = cv2.imread(f"{cls.results_dir}/{framenames[0]}")
         size = firstframe.shape[1], firstframe.shape[0]
-        out = cv2.VideoWriter('project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
         with ProcessPoolExecutor() as exec:
-            images = [cv2.imread(f"{cls.results_dir}/{filename}") for filename in framenames]
-            [out.write(img) for img in images]
+            futures = [exec.submit(cv2.imread, f"{cls.results_dir}/{filename}") for filename in framenames]
+            [out.write(f.result()) for f in futures]
         out.release()

@@ -3,7 +3,7 @@ import json
 
 from src.animation_builder import AnimationBuilder
 
-num_frames = 120
+num_frames = 420
 fps = 30
 imgsize = 8
 dpi = 300
