@@ -9,7 +9,7 @@ https://user-images.githubusercontent.com/47142856/152042667-e08d864d-d58d-4006-
 In order to put a map in the background, you'll need to provide an image file with the map and some metadata in json format:
 ```
 "vissir3_barcelona": {
-        "path" : "data/sample/barcelona.tiff",   <-- The path to the image file
+        "path" : "sample/map/barcelona.tiff",   <-- The path to the image file
         "keypoints" :   <-- A pair of locations in the map. This is needed to match it to the coordinates.
         [
             {
