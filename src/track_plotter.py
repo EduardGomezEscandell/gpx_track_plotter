@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 from src.defines import LAT, LON, ELE
 
 class TrackPlotter():
+    """
+    This class is tasked with printing a track to a matplotlib figure
+
+    It may print the full track, a profile view, the track up until a timestamp, etc.
+    """
+
     def __init__(self, track, span = None, **line_properties):
         self.track = track
         self.span = span
@@ -13,12 +19,15 @@ class TrackPlotter():
         self.step = 0
         self.progress = 0
         self.finished = False
-    
+
     @classmethod
     def __linear_interpolation(cls, x0, x1, y0, y1, x):
         return y0 + (x - x0)/(x1 - x0) * (y1 - y0)
-    
-    def next_frame(self, ax: plt.axes, time: float):
+
+    def print_until_time(self, ax: plt.axes, time: float):
+        """
+        Prints the track until a specified timestamp (in seconds)
+        """
         if self.finished or time > self.end_time:
             self.finished = True
             self.longitudes = self.track.locations[:, LON]
@@ -41,7 +50,7 @@ class TrackPlotter():
 
             self.longitudes.append(last_point[LON])
             self.latitudes.append(last_point[LAT])
-        
+
         line = ax.plot(self.longitudes, self.latitudes, **self.line_properties)
 
         if self.span is not None:
@@ -52,20 +61,26 @@ class TrackPlotter():
         ax.set_ylabel('Latitude')
 
         return line
-    
-    def location(self, ax: plt.axes, time:float = -1) -> None:
+
+    def location(self, ax: plt.axes) -> None:
+        "Plots the location at the last print_until_time"
         if not self.finished:
             ax.plot(self.longitudes[-1], self.latitudes[-1], 'o', **self.line_properties)
-    
+
     def plot_full_profile(self, ax: plt.axes) -> None:
-        p = ax.plot(self.track.timestamps / 3600, self.track.locations[:, ELE])
+        "Plots a graph of elevation over time"
+        plot_ = ax.plot(self.track.timestamps / 3600, self.track.locations[:, ELE])
         ax.set_xlabel('Time [hours]')
         ax.set_ylabel('Elevation [m]')
         ax.plot(0,0,'-')
-        return p
-    
+        return plot_
+
     def plot_full(self, ax: plt.axes) -> None:
-        line = ax.plot(self.track.locations[:, LON], self.track.locations[:, LAT], 'r', label=self.name)
+        "Plots the track from start to end"
+        line = ax.plot(
+            self.track.locations[:, LON],
+            self.track.locations[:, LAT],
+            'r', label=self.track.name)
 
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')

@@ -1,13 +1,14 @@
+import shutil
+import os
 from concurrent.futures import ProcessPoolExecutor
+
 import matplotlib.pyplot as plt
 import numpy as np
-import shutil
 import cv2
-import os
 
 from src.defines import LAT, LON
-from src import track
-from src import map
+from src.track import Track
+from src.map import Map
 
 class AnimationBuilder:
     results_dir = "result"
@@ -20,9 +21,12 @@ class AnimationBuilder:
         self.colourmap = colourmap
         self.map_settings = map_settings
 
+        self.tracklist = None
+        self.track_plotters = None
+
     @classmethod
-    def _ReadTrack(cls, filename) -> track.Track:
-        t = track.Track()
+    def _ReadTrack(cls, filename) -> Track:
+        t = Track()
         t.load_gpx(f"{cls.data_dir}/{filename}")
         print(f"Read {filename}")
         return t
@@ -46,22 +50,23 @@ class AnimationBuilder:
             "max_lat" : -360,
             "min_lat" :  360
         }
-        for track in self.tracklist:
-            extrema["max_lon"] = max(extrema["max_lon"], max(track.locations[:, LON]))
-            extrema["min_lon"] = min(extrema["min_lon"], min(track.locations[:, LON]))
-            extrema["max_lat"] = max(extrema["max_lat"], max(track.locations[:, LAT]))
-            extrema["min_lat"] = min(extrema["min_lat"], min(track.locations[:, LAT]))
+
+        for trk in self.tracklist:
+            extrema["max_lon"] = max(extrema["max_lon"], max(trk.locations[:, LON]))
+            extrema["min_lon"] = min(extrema["min_lon"], min(trk.locations[:, LON]))
+            extrema["max_lat"] = max(extrema["max_lat"], max(trk.locations[:, LAT]))
+            extrema["min_lat"] = min(extrema["min_lat"], min(trk.locations[:, LAT]))
         return extrema
 
-    def _GenerateSingleFrame(self, T: list, map_: map.Map, size: tuple, frame: int) -> plt.figure:
+    def _GenerateSingleFrame(self, T: list, map_: Map, size: tuple, frame: int) -> plt.figure:
         fig = plt.figure(figsize=size, dpi=self.dpi)
-        ax = plt.gca()
+        ax = fig.axes[0]
 
         map_.plot(ax)
 
         ntracks = len(self.track_plotters)
         for i in range(ntracks):
-            self.track_plotters[i].next_frame(ax, T[frame])
+            self.track_plotters[i].print_until_time(ax, T[frame])
         for i in range(ntracks):
             self.track_plotters[i].location(ax, T[frame])
 
@@ -71,18 +76,18 @@ class AnimationBuilder:
         print(f'Generated frame {frame}')
 
     def GenerateFrames(self):
-        filenames = os.listdir("data")
+        filenames = [f for f in os.listdir("data") if ".gpx" in f]
 
-        with ProcessPoolExecutor() as exec:
-            futures = [exec.submit(self._ReadTrack, filename) for filename in filenames if ".gpx" in filename]
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(self._ReadTrack, filename) for filename in filenames]
             self.tracklist = [future.result() for future in futures]
             self.tracklist.sort(key=lambda trk: trk.timestamps[-1])
 
         self._GenerateResultsDir()
-        map_ = map.Map(self.map_settings)
+        map_ = Map(self.map_settings)
 
-        AR = map_.img.shape[0] / map_.img.shape[1]
-        size = (self.imgsize, int(AR*self.imgsize))
+        aspect_ratio = map_.img.shape[0] / map_.img.shape[1]
+        size = (self.imgsize, int(aspect_ratio*self.imgsize))
 
         max_t = max(self.tracklist, key= lambda trk: trk.timestamps[-1]).timestamps[-1]
         time_steps = np.linspace(0, max_t, self.num_frames)
@@ -91,7 +96,7 @@ class AnimationBuilder:
         extrema = self._FindExtrema()
         self.track_plotters = [trk.get_track_plotter(extrema, color=col) for trk, col in zip(self.tracklist, colours)]
 
-        [self._GenerateSingleFrame(time_steps, map_, size, frame) for frame in range(self.num_frames)]
+        _ = [self._GenerateSingleFrame(time_steps, map_, size, frame) for frame in range(self.num_frames)]
 
     @classmethod
     def BuildVideo(cls, fps):
@@ -102,7 +107,7 @@ class AnimationBuilder:
         size = firstframe.shape[1], firstframe.shape[0]
         out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
-        with ProcessPoolExecutor() as exec:
-            futures = [exec.submit(cv2.imread, f"{cls.results_dir}/{filename}") for filename in framenames]
-            [out.write(f.result()) for f in futures]
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(cv2.imread, f"{cls.results_dir}/{filename}") for filename in framenames]
+            _ = [out.write(f.result()) for f in futures]
         out.release()
