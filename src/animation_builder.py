@@ -83,39 +83,47 @@ class AnimationBuilder:
         plt.close(fig)
         print(f'Generated frame {frame}')
 
-    def GenerateFrames(self):
+    def GenerateFrames(self, crop = False):
         filenames = [f for f in os.listdir(self.data_dir) if ".gpx" in f]
 
         with ProcessPoolExecutor() as executor:
             futures = [executor.submit(self._ReadTrack, filename) for filename in filenames]
-            self.tracklist = [future.result() for future in futures]
+
+            self._GenerateResultsDir()
+            map_ = Map(self.map_settings)
+
+            aspect_ratio = map_.img.shape[0] / map_.img.shape[1]
+            size = (self.imgsize, int(aspect_ratio*self.imgsize))
+
+            self.tracklist = list(map(lambda f: f.result(), futures))
             self.tracklist.sort(key=lambda trk: trk.timestamps[-1])
 
-        self._GenerateResultsDir()
-        map_ = Map(self.map_settings)
+            max_t = max(self.tracklist, key= lambda trk: trk.timestamps[-1]).timestamps[-1]
+            time_steps = np.linspace(0, max_t, self.num_frames)
 
-        aspect_ratio = map_.img.shape[0] / map_.img.shape[1]
-        size = (self.imgsize, int(aspect_ratio*self.imgsize))
+            colours = self.colourmap(np.linspace(0,1, len(self.tracklist)))
+            
+            extrema = None
+            if crop:
+                extrema = self._FindExtrema()
+            
+            self.track_plotters = [trk.get_track_plotter(extrema, color=col) for trk, col in zip(self.tracklist, colours)]
 
-        max_t = max(self.tracklist, key= lambda trk: trk.timestamps[-1]).timestamps[-1]
-        time_steps = np.linspace(0, max_t, self.num_frames)
-
-        colours = self.colourmap(np.linspace(0,1, len(self.tracklist)))
-        extrema = self._FindExtrema()
-        self.track_plotters = [trk.get_track_plotter(extrema, color=col) for trk, col in zip(self.tracklist, colours)]
-
-        _ = [self._GenerateSingleFrame(time_steps, map_, size, frame) for frame in range(self.num_frames)]
+            futures = [executor.submit(self._GenerateSingleFrame, time_steps, map_, size, frame) for frame in range(self.num_frames)]
+            map(lambda f: f.result, futures)
 
     @classmethod
     def BuildVideo(cls, fps):
-        framenames = os.listdir("result")
+        framenames = os.listdir(cls.results_dir)
         framenames.sort()
 
         firstframe = cv2.imread(f"{cls.results_dir}/{framenames[0]}")
         size = firstframe.shape[1], firstframe.shape[0]
-        out = cv2.VideoWriter('result_sample.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+        out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
         with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(cv2.imread, f"{cls.results_dir}/{filename}") for filename in framenames]
-            _ = [out.write(f.result()) for f in futures]
+            futures = [executor.submit(cv2.imread, f"{cls.results_dir}/{f}") for f in framenames]
+            for f in futures:
+                out.write(f.result())
+
         out.release()
