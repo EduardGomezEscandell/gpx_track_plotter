@@ -8,7 +8,7 @@ It crops the image
 from PIL import Image
  
 # Opens a image in RGB mode
-im = Image.open("data/map/catalunya.tiff")
+im = Image.open("sample/map/barcelona.tiff")
  
 # Size of the image in pixels (size of original image)
 # (This is not mandatory)

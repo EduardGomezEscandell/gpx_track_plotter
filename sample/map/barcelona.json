@@ -1,0 +1,20 @@
+{
+    "vissir3_barcelona": {
+        "path": "sample/map/barcelona.tiff",
+        "keypoints":
+        [
+            {
+                "name": "Tibidabo",
+                "pixel": [1632, 1739],
+                "lat": 41.423,
+                "lon": 2.119
+            },
+            {
+                "name": "La Morella",
+                "pixel": [2182, 1047],
+                "lat": 41.2966,
+                "lon": 1.9155
+            }
+        ]
+    }
+}

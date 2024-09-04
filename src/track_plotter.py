@@ -24,7 +24,7 @@ class TrackPlotter():
     def __linear_interpolation(cls, x0, x1, y0, y1, x):
         return y0 + (x - x0)/(x1 - x0) * (y1 - y0)
 
-    def print_until_time(self, ax: plt.axes, time: float):
+    def print_until_time(self, ax: plt.Axes, time: float):
         """
         Prints the track until a specified timestamp (in seconds)
         """
@@ -62,12 +62,12 @@ class TrackPlotter():
 
         return line
 
-    def location(self, ax: plt.axes) -> None:
+    def location(self, ax: plt.Axes) -> None:
         "Plots the location at the last print_until_time"
         if not self.finished:
             ax.plot(self.longitudes[-1], self.latitudes[-1], 'o', **self.line_properties)
 
-    def plot_full_profile(self, ax: plt.axes) -> None:
+    def plot_full_profile(self, ax: plt.Axes) -> None:
         "Plots a graph of elevation over time"
         plot_ = ax.plot(self.track.timestamps / 3600, self.track.locations[:, ELE])
         ax.set_xlabel('Time [hours]')
@@ -75,7 +75,7 @@ class TrackPlotter():
         ax.plot(0,0,'-')
         return plot_
 
-    def plot_full(self, ax: plt.axes) -> None:
+    def plot_full(self, ax: plt.Axes) -> None:
         "Plots the track from start to end"
         line = ax.plot(
             self.track.locations[:, LON],

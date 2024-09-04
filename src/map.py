@@ -32,11 +32,11 @@ class Map:
         P[LON] = json_obj["lon"]
         return P
 
-    def plot(self, ax: plt.axes):
+    def plot(self, ax: plt.Axes):
         im = ax.imshow(self.img, extent=self.extent, aspect='auto')
         return im
     
-    def plot_raw(self, ax: plt.axes):
+    def plot_raw(self, ax: plt.Axes):
         im = ax.imshow(self.img)
         return im
 

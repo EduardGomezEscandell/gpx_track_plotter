@@ -11,10 +11,9 @@ from src.track import Track
 from src.map import Map
 
 class AnimationBuilder:
-    results_dir = "result"
-    data_dir = "data"
-
-    def __init__(self, num_frames, imgsize, dpi, colourmap, map_settings):
+    def __init__(self, data_dir, results_dir, num_frames, imgsize, dpi, colourmap, map_settings):
+        self.results_dir = results_dir
+        self.data_dir = data_dir
         self.num_frames = num_frames
         self.imgsize = imgsize
         self.dpi = dpi
@@ -24,30 +23,20 @@ class AnimationBuilder:
         self.tracklist = None
         self.track_plotters = None
     
-    @classmethod
-    def set_results_dir(cls, new_val) -> None:
-        cls.results_dir = new_val
-    
-    @classmethod
-    def set_data_dir(cls, new_val) -> None:
-        cls.data_dir = new_val
-
-    @classmethod
-    def _ReadTrack(cls, filename) -> Track:
+    def _ReadTrack(self, filename) -> Track:
         t = Track()
-        t.load_gpx(f"{cls.data_dir}/{filename}")
+        t.load_gpx(f"{self.data_dir}/{filename}")
         print(f"Read {filename}")
         return t
 
-    @classmethod
-    def _GenerateResultsDir(cls) -> None:
+    def _GenerateResultsDir(self) -> None:
         try:
-            shutil.rmtree(cls.results_dir)
+            shutil.rmtree(self.results_dir)
         except FileNotFoundError:
             pass
 
         try:
-            os.mkdir(cls.results_dir)
+            os.mkdir(self.results_dir)
         except FileExistsError:
             pass
 
@@ -86,7 +75,7 @@ class AnimationBuilder:
     def GenerateFrames(self, crop = False):
         filenames = [f for f in os.listdir(self.data_dir) if ".gpx" in f]
 
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=8) as executor:
             futures = [executor.submit(self._ReadTrack, filename) for filename in filenames]
 
             self._GenerateResultsDir()
@@ -112,17 +101,16 @@ class AnimationBuilder:
             futures = [executor.submit(self._GenerateSingleFrame, time_steps, map_, size, frame) for frame in range(self.num_frames)]
             map(lambda f: f.result, futures)
 
-    @classmethod
-    def BuildVideo(cls, fps):
-        framenames = os.listdir(cls.results_dir)
+    def BuildVideo(self, fps):
+        framenames = os.listdir(self.results_dir)
         framenames.sort()
 
-        firstframe = cv2.imread(f"{cls.results_dir}/{framenames[0]}")
+        firstframe = cv2.imread(f"{self.results_dir}/{framenames[0]}")
         size = firstframe.shape[1], firstframe.shape[0]
         out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
         with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(cv2.imread, f"{cls.results_dir}/{f}") for f in framenames]
+            futures = [executor.submit(cv2.imread, f"{self.results_dir}/{f}") for f in framenames]
             for f in futures:
                 out.write(f.result())
 
